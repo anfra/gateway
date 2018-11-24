@@ -1,29 +1,30 @@
 package main
 
 import "net"
+import "os"
 import "fmt"
 import "bufio"
 import "strings" // only needed below for sample processing
 
 func main() {
 
-  fmt.Println("Launching gateway...")
+	fmt.Println("Launching gateway...")
 
-  // listen on all interfaces
-  ln, _ := net.Listen("tcp", ":8081")
+	// listen on all interfaces
+	ln, _ := net.Listen("tcp", ":"+os.Getenv("LISTENER_PORT"))
+	fmt.Println("Listening on ", ln.Addr())
+	// accept connection on port
+	conn, _ := ln.Accept()
 
-  // accept connection on port
-  conn, _ := ln.Accept()
-
-  // run loop forever (or until ctrl-c)
-  for {
-    // will listen for message to process ending in newline (\n)
-    message, _ := bufio.NewReader(conn).ReadString('\n')
-    // output message received
-    fmt.Print("Message Received:", string(message))
-    // sample process for string received  --- (forward message to influxDB later on)
-    newmessage := strings.ToUpper(message)
-    // send new string back to client
-    conn.Write([]byte(newmessage + "\n"))
-  }
+	// run loop forever (or until ctrl-c)
+	for {
+		// will listen for message to process ending in newline (\n)
+		message, _ := bufio.NewReader(conn).ReadString('\n')
+		// output message received
+		fmt.Print("Message Received:", string(message))
+		// sample process for string received  --- (forward message to influxDB later on)
+		newmessage := strings.ToUpper(message)
+		// send new string back to client
+		conn.Write([]byte(newmessage + "\n"))
+	}
 }

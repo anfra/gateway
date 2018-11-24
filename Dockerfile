@@ -1,5 +1,6 @@
-FROM alpine:latest
+FROM debian:stretch-slim
 MAINTAINER Anton Frank
-COPY gateway /usr/bin
-EXPOSE 8081
+ENV LISTENER_PORT=8081
+COPY gateway /usr/bin/
+EXPOSE ${LISTENER_PORT}
 CMD ["/usr/bin/gateway"]
