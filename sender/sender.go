@@ -12,15 +12,15 @@ import (
 var interval int = 1000
 
 type sample struct {
-	Time  int64   `json:"time"`
-	Id    string  `json:"id"`
-	Value float64 `json:"value"`
+	Time  time.Time `json:"time"`
+	Id    string    `json:"id"`
+	Value float64   `json:"value"`
 }
 
 func getSample() sample {
 	currentValue := rand.Float64()
 	id := "voltage"
-	currentSample := sample{time.Now().UTC().Unix(), id, currentValue}
+	currentSample := sample{time.Now(), id, currentValue}
 	return currentSample
 }
 

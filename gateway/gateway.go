@@ -18,13 +18,29 @@ const (
 )
 
 type sample struct {
-	Time  int64   `json:"time"`
-	Id    string  `json:"id"`
-	Value float64 `json:"value"`
+	Time  time.Time `json:"time"`
+	Id    string    `json:"id"`
+	Value float64   `json:"value"`
 }
 
-func writePoints(clnt client.Client, sample sample) {
-	sampleSize := 1000
+// queryDB convenience function to query the database
+func queryDB(clnt client.Client, cmd string) (res []client.Result, err error) {
+	q := client.Query{
+		Command:  cmd,
+		Database: MyDB,
+	}
+	if response, err := clnt.Query(q); err == nil {
+		if response.Error() != nil {
+			return res, response.Error()
+		}
+		res = response.Results
+	} else {
+		return res, err
+	}
+	return res, nil
+}
+
+func writePoints(clnt client.Client, msg sample) {
 
 	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
 		Database:  MyDB,
@@ -34,11 +50,19 @@ func writePoints(clnt client.Client, sample sample) {
 		log.Fatal(err)
 	}
 
+	tags := map[string]string{
+		"voltage": "voltage_1",
+	}
+
+	fields := map[string]interface{}{
+		"value": msg.Value,
+	}
+
 	pt, err := client.NewPoint(
-		"cpu_usage",
+		msg.Id,
 		tags,
 		fields,
-		time.Now(),
+		msg.Time,
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -50,7 +74,21 @@ func writePoints(clnt client.Client, sample sample) {
 	}
 }
 
-func handleServerConnection(conn net.Conn) {
+func handleServerConnection(conn net.Conn, c client.Client) {
+
+	for {
+		var msg sample
+		d := json.NewDecoder(conn)
+		err := d.Decode(&msg)
+		fmt.Println(msg, err)
+
+		go writePoints(c, msg)
+	}
+}
+
+func main() {
+
+	fmt.Println("Launching gateway...")
 
 	// Create a new HTTPClient
 	c, err := client.NewHTTPClient(client.HTTPConfig{
@@ -63,19 +101,11 @@ func handleServerConnection(conn net.Conn) {
 	}
 	defer c.Close()
 
-	for {
-		var msg sample
-		d := json.NewDecoder(conn)
-		err := d.Decode(&msg)
-		fmt.Println(msg, err)
+	// Create Database
+	res, err := queryDB(c, fmt.Sprintf("CREATE DATABASE %s", MyDB))
+	if err != nil {
+		log.Fatal(res, err)
 	}
-
-	writePoints(c, msg)
-}
-
-func main() {
-
-	fmt.Println("Launching gateway...")
 
 	// listen on all interfaces
 	ln, err := net.Listen("tcp", ":"+os.Getenv("LISTENER_PORT"))
@@ -93,6 +123,6 @@ func main() {
 			continue
 		}
 		// handle the connection
-		go handleServerConnection(conn)
+		go handleServerConnection(conn, c)
 	}
 }
