@@ -1,0 +1,31 @@
+version: "3"
+
+services:
+  sender:
+    image: anfra/sender:latest
+    environment:
+      SERVER_ADDRESS: 'gateway:8081'
+
+  gateway:
+    image: anfra/gateway:latest
+    environment:
+      LISTENER_PORT: "8081"
+      INFLUX_URL: http://influxdb:8086
+
+  # Define an InfluxDB service
+  influxdb:
+    image: influxdb
+    volumes:
+      - influx_data:/var/lib/influxdb
+    ports:
+      - "8086:8086"
+
+  chronograf:
+    image: chronograf
+    environment:
+      INFLUXDB_URL: http://influxdb:8086
+    ports:
+      - "8888:8888"
+
+volumes: 
+  influx_data:
